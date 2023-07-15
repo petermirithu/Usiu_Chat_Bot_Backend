@@ -94,7 +94,7 @@ WSGI_APPLICATION = "bot_project.wsgi.application"
 
 MONGO_DB_NAME = config("MONGO_DB_NAME")
 
-mongoengine.connect(host=config("MONGO_DB_URI")+"/"+MONGO_DB_NAME,ssl_ca_certs=certifi.where())
+mongoengine.connect(host=config("MONGO_DB_URI")+"/"+MONGO_DB_NAME+"?ssl=true&ssl_cert_reqs=CERT_REQUIRED&ssl_ca_certs="+certifi.where()+"")
 
 os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
 
@@ -105,6 +105,25 @@ OPEN_AI_CHAT_MODEL = config("OPEN_AI_CHAT_MODEL")
 MONGO_DB_URI = config("MONGO_DB_URI")
 
 CHROMA_DB_DIR = os.path.join(BASE_DIR, '.chroma')
+
+JWT_SECRET = config("JWT_SECRET")
+
+JWT_ALGORITHM = config("JWT_ALGORITHM")
+
+ENCODE_ALGORITHM = config("ENCODE_ALGORITHM")
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = 'smtp.gmail.com'
+
+EMAIL_USE_TLS = True
+
+EMAIL_PORT = 587
+
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+
 
 # Define the Chroma settings
 CHROMA_SETTINGS = Settings(    

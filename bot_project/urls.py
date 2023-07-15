@@ -24,6 +24,8 @@ urlpatterns = [
     path("", views.home),    
     path("admin/", admin.site.urls),
     path('api/', include('usiu_app.urls')),        
+    path("train", views.train_model),    
+    path("train/<str:option>", views.train_model),    
 ]
 
 if settings.DEBUG:

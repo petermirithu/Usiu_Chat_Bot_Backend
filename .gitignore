@@ -4,5 +4,4 @@
 virtual
 __pycache__
 .chroma
-media/audios
-media/personal_documents
+media/
