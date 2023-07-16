@@ -12,7 +12,7 @@ from usiu_app.enc_decryption import check_password, encode_value, hash_password
 from usiu_app.langchain_model import process_user_input
 from usiu_app.models import Messages, Users, VerificationCodes, Sessions
 from usiu_app.multi_threading import start_save_message_thread
-from usiu_app.serializers import UsersSerializer
+from usiu_app.serializers import MessagesSerializer, SessionsSerializer, UsersSerializer
 from .permissions import isAuthorized
 from django.utils.timezone import now as getTimeNow
 import traceback
@@ -188,3 +188,100 @@ def send_question(request):
         print(traceback.format_exc())           
         print("**********************************************************")    
         return Response("An error occured while sending your question", status=status.HTTP_400_BAD_REQUEST)    
+
+@api_view(['GET'])
+@permission_classes([isAuthorized])
+def fetch_conversations(request, user_id):    
+    try:                     
+        sessions = Sessions.objects.filter(user_id=user_id).order_by("-date_modified")
+        serialised_sessions = SessionsSerializer(sessions, many=True)        
+        results = []
+        for session in serialised_sessions.data:                                    
+            messages = Messages.objects.filter(session_id=session["id"])                           
+            if len(messages)==0:
+                Sessions.objects.filter(id=session["id"]).delete()
+            else:                
+                session["title"] = messages[0]["ai"]                                                        
+                results.append(session)
+        return Response(results, status=status.HTTP_200_OK)           
+    except:
+        # Unmuted to see full error !!!!!!!!!
+        print("**********************************************************")
+        print(traceback.format_exc())           
+        print("**********************************************************")  
+        return Response("An error occured while fetching your conversations", status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+@permission_classes([isAuthorized])
+def delete_conversation(request, session_id):    
+    try:                     
+        Sessions.objects.filter(id=session_id).delete()
+        return Response("Successfully deleted the conversation", status=status.HTTP_200_OK)           
+    except:
+        # Unmuted to see full error !!!!!!!!!
+        print("**********************************************************")
+        print(traceback.format_exc())           
+        print("**********************************************************")  
+        return Response("An error occured while deleting your conversation", status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+@permission_classes([isAuthorized])
+def fetch_conversation_history(request, session_id, from_index, to_index):    
+    results={
+        "chatPagination":{
+            "fromIndex":to_index,
+            "toIndex":to_index+10
+        },
+        "showLoadEarlier":False,
+        "messages":[],
+    }
+
+    try:                                     
+        session = Sessions.objects.get(id=session_id)
+        serialised_session = SessionsSerializer(session, many=False)                                                    
+        messages = Messages.objects.filter(session_id=session_id).order_by('-created_at')                
+        
+        remaining_messages_count = len(messages) - results["chatPagination"]["toIndex"]        
+        if remaining_messages_count > 0:
+            results["showLoadEarlier"]=True        
+        else:
+            results["showLoadEarlier"]=False
+            results["chatPagination"]["fromIndex"]=0
+            results["chatPagination"]["toIndex"]=10
+
+        paginated_messages = messages[from_index:to_index]
+        serialised_messages = MessagesSerializer(paginated_messages, many=True)                                    
+        
+        for message in serialised_messages.data:
+            human_message={                 
+                "_id": uuid.uuid4(),
+                "text": message["human"],
+                "sessionId": message["session_id"],                 
+                "createdAt": message["created_at"],
+                "user":{
+                    "_id": serialised_session.data["user_id"]                                  
+                }
+            }              
+            ai_message={     
+                "_id": uuid.uuid4(),
+                "text": message["ai"],
+                "sessionId": message["session_id"],                 
+                "createdAt": message["created_at"],
+                "user":{
+                    "_id": "sAIdi",
+                    "name": 'sAIdi',                
+                }               
+            } 
+            results["messages"].append(ai_message)                         
+            results["messages"].append(human_message)                                   
+        return Response(results, status=status.HTTP_200_OK)           
+    except Sessions.DoesNotExist:
+        return Response(results, status=status.HTTP_200_OK) 
+    except:
+        # Unmuted to see full error !!!!!!!!!
+        print("**********************************************************")
+        print(traceback.format_exc())           
+        print("**********************************************************")      
+        return Response("An error occured while fetching your conversation history", status=status.HTTP_400_BAD_REQUEST)

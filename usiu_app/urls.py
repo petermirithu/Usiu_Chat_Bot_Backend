@@ -7,4 +7,7 @@ urlpatterns = [
   path('resend_verification_code', resend_verification_code, name='resend_verification_code'),      
   path('verify_verification_code', verify_verification_code, name='verify_verification_code'),        
   path('send_question', send_question, name='send_question'),        
+  path('fetch_conversations/<str:user_id>', fetch_conversations, name='fetch_conversations'),      
+  path('delete_conversation/<str:session_id>', delete_conversation, name='delete_conversation'),        
+  path('fetch_conversation_history/<str:session_id>/<int:from_index>/<int:to_index>', fetch_conversation_history, name='fetch_conversation_history'),        
 ]
