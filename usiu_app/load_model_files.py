@@ -158,7 +158,7 @@ def start_training():
     print("____________________________________________________________________________________________")
     
     # Create embeddings        
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")    
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")   
 
     print("Embeddings done...")
     print("____________________________________________________________________________________________")

@@ -98,10 +98,6 @@ mongoengine.connect(host=config("MONGO_DB_URI")+"/"+MONGO_DB_NAME+"?ssl=true&ssl
 
 os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
 
-OPEN_AI_EMBEDDINGS_MODEL = config("OPEN_AI_EMBEDDINGS_MODEL")
-
-OPEN_AI_CHAT_MODEL = config("OPEN_AI_CHAT_MODEL")
-
 MONGO_DB_URI = config("MONGO_DB_URI")
 
 CHROMA_DB_DIR = os.path.join(BASE_DIR, '.chroma')

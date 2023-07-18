@@ -1,27 +1,20 @@
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Chroma
 import os
 from django.conf import settings
-from django.core.files.storage import default_storage
 from langchain.chains import ConversationalRetrievalChain
 import traceback
-from langchain.chat_models import ChatOpenAI
 from datetime import datetime
 from langchain.prompts.prompt import PromptTemplate
-
 from usiu_app.models import Messages, Sessions
-
+from langchain.llms import OpenAI
 
 print("⚙️ Setting up the model 📁->💻...\n")
-# Chat AI models being used.
-model_kwargs = {
-    "frequency_penalty": 1.5,
-    "top_p": 0.5,
-    "presence_penalty":0.5    
-}
-open_ai_llm = ChatOpenAI(model_name=settings.OPEN_AI_CHAT_MODEL, temperature=0.8, model_kwargs=model_kwargs)
+
+ai_llm_model = OpenAI(model="text-davinci-003", temperature=0.8, frequency_penalty=1.5, top_p=0.5, presence_penalty=0.5)
+
 # Define the embeddings models 
-embeddings = OpenAIEmbeddings(model=settings.OPEN_AI_EMBEDDINGS_MODEL)
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # Retrieve stored indexes and expose them
 chroma_db= Chroma(persist_directory=os.path.join(settings.CHROMA_DB_DIR), embedding_function=embeddings, client_settings=settings.CHROMA_SETTINGS)    
@@ -137,7 +130,7 @@ def process_user_input(query, session_id, user_id):
     try:                
         chain = ConversationalRetrievalChain.from_llm( 
             condense_question_prompt=CONDENSE_QUESTION_PROMPT,                           
-            llm=open_ai_llm, 
+            llm=ai_llm_model, 
             retriever=chroma_db_retriever, 
             chain_type=chain_type,        
         )          
