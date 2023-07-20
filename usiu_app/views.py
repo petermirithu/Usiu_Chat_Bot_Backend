@@ -6,8 +6,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 
-from usiu_app.Helpers import check_if_email_taken, generate_verification_code
-from usiu_app.email import send_verification_code
+from usiu_app.Helpers import check_if_email_taken, generate_verification_code, verify_verification_code
+from usiu_app.email import send_reset_verification_code, send_welcome_message_with_code
 from usiu_app.enc_decryption import check_password, encode_value, hash_password
 from usiu_app.langchain_model import process_user_input
 from usiu_app.models import Messages, Users, VerificationCodes, Sessions
@@ -36,7 +36,7 @@ def register_user(request):
                  
         taken=check_if_email_taken(email)
         if taken==True:            
-            return Response('Email is already taken', status=status.HTTP_423_LOCKED)
+            return Response('emailTaken', status=status.HTTP_423_LOCKED)
         else:                                
             hashed_password = hash_password(password)                
             new_user = Users(
@@ -48,15 +48,8 @@ def register_user(request):
                         )
             new_user.save()
 
-            verification_code = generate_verification_code()            
-            verification_obj = VerificationCodes(
-                user_id=new_user.id,
-                code=verification_code,                                        
-                created_at=datetime.now()
-            )
-            verification_obj.save()  
-
-            send_code_results = send_verification_code(first_name, verification_code, email)
+            verification_code = generate_verification_code(new_user.id)                        
+            send_code_results = send_welcome_message_with_code(first_name, verification_code, email)
             send_code_results=""
             if send_code_results=="error":
                 return Response("Error while sending your a verification code", status=status.HTTP_400_BAD_REQUEST)
@@ -73,15 +66,10 @@ def register_user(request):
 @api_view(['POST'])
 def resend_verification_code(request):
     data = json.loads(request.body)
-    try:                 
-        VerificationCodes.objects.get(user_id=data["userId"])
-        verification_code = generate_verification_code()            
-        VerificationCodes.objects.filter(user_id=data["userId"]).update(
-            code=verification_code,            
-            created_at=datetime.now()
-        )
+    try:                         
         user = Users.objects.get(id=data["userId"])               
-        send_code_results = send_verification_code(user.first_name, verification_code, user.email)
+        verification_code = generate_verification_code(user.id)                    
+        send_code_results = send_welcome_message_with_code(user.first_name, verification_code, user.email)
         send_code_results=""
         if send_code_results=="error":
             return Response("Error while sending you a verification code", status=status.HTTP_400_BAD_REQUEST)
@@ -94,6 +82,7 @@ def resend_verification_code(request):
         return Response("Error while resending the verification code", status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PUT'])
+@permission_classes([isAuthorized])
 def update_user(request):
     data = json.loads(request.body)
     try:         
@@ -106,6 +95,7 @@ def update_user(request):
         return Response("Error while updating your user profile", status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['PUT'])
+@permission_classes([isAuthorized])
 def change_user_password(request):
     data = json.loads(request.body)
     try:         
@@ -122,16 +112,14 @@ def change_user_password(request):
         print("**********************************************************")     
         return Response("Error while updating your user profile", status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['POST'])
-def verify_verification_code(request):
+@api_view(['PUT'])
+def verify_user_email(request):
     data = json.loads(request.body)
-    try:                 
-        verification_code=VerificationCodes.objects.get(user_id=data["userId"], code=data["code"])
-        time_now = datetime.now()        
-        code_expires_at = verification_code.created_at + timedelta(hours=1)                
+    
+    try:               
+        results = verify_verification_code(data["userId"], data["code"])
 
-        if time_now < code_expires_at:
-            VerificationCodes.objects.filter(user_id=data["userId"], code=data["code"]).update(used=True)
+        if results == "code okay":            
             Users.objects.filter(id=data["userId"]).update(verified=True)
             
             user = Users.objects.get(id=data["userId"])
@@ -143,17 +131,56 @@ def verify_verification_code(request):
             user.auth_token=encode_value(payload)                          
             serialised_user = UsersSerializer(user, many=False)                                                
             return Response(serialised_user.data, status=status.HTTP_200_OK)            
-        else:                    
-            return Response("Session expired", status=status.HTTP_400_BAD_REQUEST)        
-    except VerificationCodes.DoesNotExist:
-        return Response("Invalid verification code", status=status.HTTP_400_BAD_REQUEST)
+        elif results == "code expired":
+            return Response("codeExpired", status=status.HTTP_400_BAD_REQUEST)        
+        else:
+            return Response("invalidVerificationCode", status=status.HTTP_400_BAD_REQUEST)                                                            
+    
     except:
         print("**********************************************************")
         print(traceback.format_exc())           
         print("**********************************************************")     
         return Response("Error while verifying the verification code", status=status.HTTP_400_BAD_REQUEST)
 
-
+@api_view(['PUT'])
+def user_forgot_password(request):
+    data = json.loads(request.body)
+    try:         
+        user=Users.objects.get(email=data["email"])
+        verification_code = generate_verification_code(user.id)                    
+        send_code_results = send_reset_verification_code(user.first_name, verification_code, user.email)
+        send_code_results=""
+        if send_code_results=="error":
+            return Response("Error while sending you a verification code", status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response("Verification code sent successfully", status=status.HTTP_201_CREATED)                        
+    except Users.DoesNotExist:
+        return Response("Successfully sent the code if account exists", status=status.HTTP_200_OK)                            
+    except:
+        print("**********************************************************")
+        print(traceback.format_exc())           
+        print("**********************************************************")     
+        return Response("Error while updating your user profile", status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['PUT'])
+def user_reset_password(request):
+    data = json.loads(request.body)
+    try:                         
+        user=Users.objects.get(email=data["email"])
+        results = verify_verification_code(user.id, data["verificationCode"])
+        if results == "code okay":   
+            hashed_password = hash_password(data["password"])                            
+            Users.objects.filter(email=data["email"]).update(password=str(hashed_password))
+            return Response("Successfully reset your password", status=status.HTTP_200_OK)                                    
+        elif results == "code expired":
+            return Response("codeExpired", status=status.HTTP_400_BAD_REQUEST)        
+        else:
+            return Response("invalidVerificationCode", status=status.HTTP_400_BAD_REQUEST)                                                            
+    except:
+        print("**********************************************************")
+        print(traceback.format_exc())           
+        print("**********************************************************")     
+        return Response("Error while updating your user profile", status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def login_user(request):
@@ -252,8 +279,6 @@ def delete_conversation(request, session_id):
         print(traceback.format_exc())           
         print("**********************************************************")  
         return Response("An error occured while deleting your conversation", status=status.HTTP_400_BAD_REQUEST)
-
-
 
 @api_view(['GET'])
 @permission_classes([isAuthorized])
