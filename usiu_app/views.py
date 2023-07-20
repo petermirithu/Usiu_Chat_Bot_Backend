@@ -93,6 +93,19 @@ def resend_verification_code(request):
         print("**********************************************************")     
         return Response("Error while resending the verification code", status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['PUT'])
+def update_user(request):
+    data = json.loads(request.body)
+    try:         
+        Users.objects.filter(id=data["userId"]).update(first_name=data["firstName"],last_name=data["lastName"],email=data["email"])
+        return Response("Successfully updated your profile", status=status.HTTP_200_OK)                        
+    except:
+        print("**********************************************************")
+        print(traceback.format_exc())           
+        print("**********************************************************")     
+        return Response("Error while updating your user profile", status=status.HTTP_400_BAD_REQUEST)
+    
+
 @api_view(['POST'])
 def verify_verification_code(request):
     data = json.loads(request.body)
