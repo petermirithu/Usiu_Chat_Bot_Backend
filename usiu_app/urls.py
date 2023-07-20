@@ -5,6 +5,7 @@ urlpatterns = [
   path('register_user', register_user, name='register_user'),    
   path('login_user', login_user, name='login_user'),      
   path('update_user', update_user, name='update_user'),      
+  path('change_user_password', change_user_password, name='change_user_password'),      
   path('resend_verification_code', resend_verification_code, name='resend_verification_code'),      
   path('verify_verification_code', verify_verification_code, name='verify_verification_code'),        
   path('send_question', send_question, name='send_question'),        

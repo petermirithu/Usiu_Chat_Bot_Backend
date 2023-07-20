@@ -105,6 +105,22 @@ def update_user(request):
         print("**********************************************************")     
         return Response("Error while updating your user profile", status=status.HTTP_400_BAD_REQUEST)
     
+@api_view(['PUT'])
+def change_user_password(request):
+    data = json.loads(request.body)
+    try:         
+        user=Users.objects.get(id=data["userId"])
+        if(check_password(data["oldPassword"], user.password) == True):                    
+            hashed_password = hash_password(data["newPassword"])                            
+            Users.objects.filter(id=data["userId"]).update(password=str(hashed_password))
+            return Response("Successfully updated your password", status=status.HTTP_200_OK)                        
+        else:
+            return Response("invalidPassword", status=status.HTTP_400_BAD_REQUEST)                        
+    except:
+        print("**********************************************************")
+        print(traceback.format_exc())           
+        print("**********************************************************")     
+        return Response("Error while updating your user profile", status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def verify_verification_code(request):
@@ -155,9 +171,9 @@ def login_user(request):
                 serialised_user = UsersSerializer(user, many=False)                                        
                 return Response(serialised_user.data, status=status.HTTP_200_OK)
             else:
-                return Response('Invalid login credentials! Please try again.', status=status.HTTP_400_BAD_REQUEST)
+                return Response("invalidCredentials", status=status.HTTP_400_BAD_REQUEST)                                        
         except Users.DoesNotExist:            
-            return Response('No account found with that Email. Enter a valid email.', status=status.HTTP_404_NOT_FOUND)
+            return Response("invalidCredentials", status=status.HTTP_400_BAD_REQUEST)                                                    
     except:
         # Unmuted to see full error !!!!!!!!!
         print("**********************************************************")
