@@ -7,10 +7,10 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 
 from usiu_app.Helpers import check_if_email_taken, generate_verification_code, verify_verification_code
-from usiu_app.email import send_reset_verification_code, send_welcome_message_with_code
+from usiu_app.email import send_reset_verification_code, send_user_feedback_message, send_welcome_message_with_code
 from usiu_app.enc_decryption import check_password, encode_value, hash_password
 from usiu_app.langchain_model import process_user_input
-from usiu_app.models import Messages, Users, VerificationCodes, Sessions
+from usiu_app.models import Feedback, Messages, Users, VerificationCodes, Sessions
 from usiu_app.multi_threading import start_save_message_thread
 from usiu_app.serializers import MessagesSerializer, SessionsSerializer, UsersSerializer
 from .permissions import isAuthorized
@@ -189,7 +189,8 @@ def login_user(request):
         email = data['email']
         password = data['password']                
         try:
-            user = Users.objects.get(email=email)               
+            user = Users.objects.get(email=email)                           
+
             if(check_password(password, user.password) == True):                    
                 now = getTimeNow()   
                 serialised_user = UsersSerializer(user, many=False)                                                                 
@@ -198,8 +199,14 @@ def login_user(request):
                 serialised_user = UsersSerializer(user, many=False)                                        
                 return Response(serialised_user.data, status=status.HTTP_200_OK)
             else:
+                print("**********************************************************")
+                print("Wrong password")           
+                print("**********************************************************")     
                 return Response("invalidCredentials", status=status.HTTP_400_BAD_REQUEST)                                        
-        except Users.DoesNotExist:            
+        except Users.DoesNotExist:   
+            print("**********************************************************")
+            print("User not found")           
+            print("**********************************************************")     
             return Response("invalidCredentials", status=status.HTTP_400_BAD_REQUEST)                                                    
     except:
         # Unmuted to see full error !!!!!!!!!
@@ -339,3 +346,25 @@ def fetch_conversation_history(request, session_id, from_index, to_index):
         print(traceback.format_exc())           
         print("**********************************************************")      
         return Response("An error occured while fetching your conversation history", status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([isAuthorized])
+def send_feedback(request):    
+    try:
+        user_id = request.data.get("userId")        
+        rating = request.data.get("rating") 
+        focus_areas = request.data.get("focusAreas")
+        message = request.data.get("message") 
+
+        feedback = Feedback(user_id=user_id, rating=rating, focus_areas=focus_areas, message=message, created_at=datetime.now())
+        feedback.save()  
+
+        user = Users.objects.get(id=user_id)                                   
+        send_user_feedback_message(user.first_name, user.email)
+        return Response("Successfully saved the feedback", status=status.HTTP_201_CREATED)           
+    except:
+        # Unmuted to see full error !!!!!!!!!
+        # print("**********************************************************")
+        # print(traceback.format_exc())           
+        # print("**********************************************************")    
+        return Response("An error occured while sending your question", status=status.HTTP_400_BAD_REQUEST)    

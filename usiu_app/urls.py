@@ -14,4 +14,5 @@ urlpatterns = [
   path('fetch_conversations/<str:user_id>', fetch_conversations, name='fetch_conversations'),      
   path('delete_conversation/<str:session_id>', delete_conversation, name='delete_conversation'),        
   path('fetch_conversation_history/<str:session_id>/<int:from_index>/<int:to_index>', fetch_conversation_history, name='fetch_conversation_history'),        
+  path('send_feedback', send_feedback, name='send_feedback'),    
 ]

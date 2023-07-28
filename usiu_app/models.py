@@ -29,3 +29,11 @@ class Messages(Document):
     ai = StringField(required=True)                        
     created_at = DateTimeField(required=True)        
     date_modified = DateTimeField(default=datetime.datetime.utcnow)
+
+class Feedback(Document):  
+    user_id = ReferenceField(Users, reverse_delete_rule=CASCADE)      
+    rating = IntField(default=0)    
+    focus_areas = ListField()
+    message = StringField()            
+    created_at = DateTimeField(required=True)        
+    date_modified = DateTimeField(default=datetime.datetime.utcnow)

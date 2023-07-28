@@ -22,3 +22,14 @@ def send_reset_verification_code(first_name, verification_code, recipient_email 
         return "done"
     except:
         return "error"    
+
+def send_user_feedback_message(first_name, recipient_email ):
+    try:
+        subject = 'Thank you for the Feedback'
+        message = f"Greetings {first_name},\n\nWe wanted to personally express our gratitude for taking the time to provide feedback on our app. Your input is valuable to us as it helps us improve and enhance the user experience.\n\nIf you encounter any further issues or have additional feedback to share, please don't hesitate to reach out. Your continued support and engagement are vital to our success, and we're always here to listen and assist.\n\nWith kind regards,\nYour USIU Chat Bot Team."
+        email_from = settings.EMAIL_HOST_USER
+        recipient_list = [recipient_email, ]
+        send_mail( subject, message, email_from, recipient_list )
+        return "done"
+    except:
+        return "error"      
