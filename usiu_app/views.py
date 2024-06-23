@@ -359,8 +359,8 @@ def send_feedback(request):
         feedback = Feedback(user_id=user_id, rating=rating, focus_areas=focus_areas, message=message, created_at=datetime.now())
         feedback.save()  
 
-        user = Users.objects.get(id=user_id)                                   
-        send_user_feedback_message(user.first_name, user.email)
+        user = Users.objects.get(id=user_id)                                           
+        send_user_feedback_message(user.first_name, user.last_name, message, user.email)
         return Response("Successfully saved the feedback", status=status.HTTP_201_CREATED)           
     except:
         # Unmuted to see full error !!!!!!!!!
